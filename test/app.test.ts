@@ -13,6 +13,7 @@ const testConfig = {
   OKX_AI_INDEXER_URL: undefined,
   OKX_PAYMENT_BASE_URL: undefined,
   VOUCH_SIGNING_PRIVATE_KEY: undefined,
+  REPUTATION_DATA_SOURCE_MODE: 'null' as const,
   PAYMENTS_REQUIRED: false
 };
 
@@ -43,6 +44,18 @@ describe('app routes', () => {
 
     assert.equal(response.statusCode, 200);
     assert.equal(response.json().risk_level, 'high');
+  });
+
+  it('returns a degraded trust-score response when no reputation data source is configured', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/trust-score',
+      payload: { agent_id: 'agent_alpha', requesting_context: 'a2a_negotiation' }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().confidence, 'unavailable');
+    assert.deepEqual(response.json().flags, ['no_reputation_data_source']);
   });
 
   it('returns 402 when payments are required and proof is absent', async () => {

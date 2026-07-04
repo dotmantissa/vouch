@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getOrComputeTrustScore } from '../domain/trust/trust-score-service.js';
 import { createX402PreHandler } from '../plugins/x402.js';
 
 const trustScoreRequestSchema = z.object({
@@ -13,14 +14,15 @@ export async function registerTrustScoreRoute(app: FastifyInstance) {
     {
       preHandler: createX402PreHandler(app.config, 'trust-score')
     },
-    async (request, reply) => {
+    async (request) => {
       const body = trustScoreRequestSchema.parse(request.body);
 
-      return reply.code(501).send({
-        error: 'not_implemented',
-        phase: 'phase_3',
-        message: 'trust-score is planned next. Start with sybil-check for the first working slice.',
-        request: body
+      return getOrComputeTrustScore({
+        agentId: body.agent_id,
+        requestingContext: body.requesting_context,
+        sybilRiskRepository: app.sybilRiskRepository,
+        reputationDataSource: app.reputationDataSource,
+        cache: app.trustScoreCache
       });
     }
   );

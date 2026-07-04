@@ -7,23 +7,7 @@ import type {
   SharedFundingHit,
   SybilRiskRepository
 } from '../domain/sybil/types.js';
-
-function normalizeText(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean);
-}
-
-function jaccardSimilarity(a: string, b: string): number {
-  const setA = new Set(normalizeText(a));
-  const setB = new Set(normalizeText(b));
-  const intersection = new Set([...setA].filter((token) => setB.has(token)));
-  const union = new Set([...setA, ...setB]);
-
-  return union.size === 0 ? 0 : intersection.size / union.size;
-}
+import { jaccardSimilarity } from '../domain/trust/text-utils.js';
 
 export class InMemorySybilRiskRepository implements SybilRiskRepository {
   private readonly agents: AgentProfile[] = [
@@ -31,25 +15,29 @@ export class InMemorySybilRiskRepository implements SybilRiskRepository {
       agentId: 'agent_alpha',
       walletAddress: '0xAlphaWallet',
       listingText: 'Cross-chain market making and routing intelligence for xlayer liquidity and stable execution.',
-      registeredAtBlock: 100
+      registeredAtBlock: 100,
+      firstSeenAt: new Date('2026-04-01T00:00:00.000Z')
     },
     {
       agentId: 'agent_alpha_clone',
       walletAddress: '0xAlphaCloneWallet',
       listingText: 'Cross chain market making and routing intelligence for xlayer liquidity and stable execution',
-      registeredAtBlock: 101
+      registeredAtBlock: 101,
+      firstSeenAt: new Date('2026-04-03T00:00:00.000Z')
     },
     {
       agentId: 'agent_alpha_farm',
       walletAddress: '0xAlphaFarmWallet',
       listingText: 'Autonomous trade routing and best execution for xlayer and base stablecoin orderflow.',
-      registeredAtBlock: 100
+      registeredAtBlock: 100,
+      firstSeenAt: new Date('2026-04-01T00:00:00.000Z')
     },
     {
       agentId: 'agent_bespoke',
       walletAddress: '0xBespokeWallet',
       listingText: 'Custom logo design agent focused on fintech brand systems and responsive motion mockups.',
-      registeredAtBlock: 220
+      registeredAtBlock: 220,
+      firstSeenAt: new Date('2026-06-20T00:00:00.000Z')
     }
   ];
 

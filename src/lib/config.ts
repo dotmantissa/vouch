@@ -26,6 +26,7 @@ const configSchema = z.object({
   OKX_AI_INDEXER_URL: z.string().optional(),
   OKX_PAYMENT_BASE_URL: z.string().optional(),
   VOUCH_SIGNING_PRIVATE_KEY: z.string().optional(),
+  REPUTATION_DATA_SOURCE_MODE: z.enum(['null']).default('null'),
   PAYMENTS_REQUIRED: booleanFromEnv.default(false)
 });
 

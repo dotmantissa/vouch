@@ -21,6 +21,7 @@ export type AgentProfile = {
   walletAddress: string;
   listingText: string;
   registeredAtBlock: number;
+  firstSeenAt: Date | null;
 };
 
 export type FundingEdge = {
