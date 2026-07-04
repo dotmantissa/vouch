@@ -12,7 +12,7 @@ export async function registerTrustScoreRoute(app: FastifyInstance) {
   app.post(
     '/trust-score',
     {
-      preHandler: createX402PreHandler(app.config, 'trust-score')
+      preHandler: createX402PreHandler(app, 'trust-score')
     },
     async (request) => {
       const body = trustScoreRequestSchema.parse(request.body);

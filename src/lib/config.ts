@@ -30,6 +30,11 @@ const configSchema = z.object({
   CAPABILITY_CERT_QUEUE_MODE: z.enum(['in-process']).default('in-process'),
   CAPABILITY_UPTIME_REQUESTS: z.coerce.number().int().positive().default(5),
   CAPABILITY_UPTIME_INTERVAL_MS: z.coerce.number().int().nonnegative().default(6_000),
+  X402_MODE: z.enum(['mock', 'okx']).default('mock'),
+  X402_ACCEPTED_ASSET: z.string().default('USDC'),
+  X402_NETWORK: z.string().default('xlayer'),
+  X402_PAYMENT_ADDRESS: z.string().default('0x000000000000000000000000000000000000dEaD'),
+  X402_MOCK_SECRET: z.string().default('vouch-dev-x402-secret'),
   PAYMENTS_REQUIRED: booleanFromEnv.default(false)
 });
 

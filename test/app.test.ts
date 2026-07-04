@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { after, before, describe, it } from 'node:test';
 import { buildApp } from '../src/app.js';
+import { serviceCatalog } from '../src/lib/service-catalog.js';
+import { createMockX402Proof } from '../src/payments/mock-x402-verifier.js';
 
 const testConfig = {
   NODE_ENV: 'test' as const,
@@ -18,12 +20,30 @@ const testConfig = {
   CAPABILITY_CERT_QUEUE_MODE: 'in-process' as const,
   CAPABILITY_UPTIME_REQUESTS: 5,
   CAPABILITY_UPTIME_INTERVAL_MS: 1,
+  X402_MODE: 'mock' as const,
+  X402_ACCEPTED_ASSET: 'USDC',
+  X402_NETWORK: 'xlayer',
+  X402_PAYMENT_ADDRESS: '0x000000000000000000000000000000000000dEaD',
+  X402_MOCK_SECRET: 'test-x402-secret',
   PAYMENTS_REQUIRED: false
 };
 
 const app = buildApp(testConfig);
 let probeServer: ReturnType<typeof createServer>;
 let probeBaseUrl = '';
+
+function createProof(serviceKey: keyof typeof serviceCatalog) {
+  const service = serviceCatalog[serviceKey];
+  return createMockX402Proof({
+    service,
+    asset: testConfig.X402_ACCEPTED_ASSET,
+    amount: service.usdPrice,
+    network: testConfig.X402_NETWORK,
+    payTo: testConfig.X402_PAYMENT_ADDRESS,
+    secret: testConfig.X402_MOCK_SECRET,
+    nonce: `${serviceKey}-test-nonce`
+  });
+}
 
 async function waitForCompletion(certId: string) {
   for (let attempt = 0; attempt < 50; attempt += 1) {
@@ -128,12 +148,16 @@ describe('app routes', () => {
     assert.equal(completedPayload.status, 'complete');
     assert.equal(completedPayload.claimed_capability, 'data_api');
     assert.ok(Array.isArray(completedPayload.probe_results));
-    assert.ok(completedPayload.probe_results.some((probe: { probe: string; value: string }) => probe.probe === 'schema_conformance' && probe.value === 'pass'));
+    assert.ok(
+      completedPayload.probe_results.some(
+        (probe: { probe: string; value: string }) => probe.probe === 'schema_conformance' && probe.value === 'pass'
+      )
+    );
     assert.ok(typeof completedPayload.signature === 'string' && completedPayload.signature.length > 0);
     assert.ok(typeof completedPayload.expires_at === 'string' && completedPayload.expires_at.length > 0);
   });
 
-  it('returns 402 when payments are required and proof is absent', async () => {
+  it('returns x402 payment details when payment proof is absent', async () => {
     const paidApp = buildApp({ ...testConfig, PAYMENTS_REQUIRED: true });
 
     await paidApp.ready();
@@ -145,6 +169,46 @@ describe('app routes', () => {
 
     assert.equal(response.statusCode, 402);
     assert.equal(response.json().service, 'sybil-check');
+    assert.equal(response.json().price.amount, '0.05');
+    assert.equal(response.json().payment.asset, 'USDC');
+    assert.equal(response.json().verifier.mode, 'mock');
+    assert.match(response.headers['www-authenticate'] as string, /x402="1"/);
+    await paidApp.close();
+  });
+
+  it('allows a paid trust-score request with valid mock x402 proof', async () => {
+    const paidApp = buildApp({ ...testConfig, PAYMENTS_REQUIRED: true });
+
+    await paidApp.ready();
+    const response = await paidApp.inject({
+      method: 'POST',
+      url: '/trust-score',
+      headers: {
+        'x-payment-proof': createProof('trust-score')
+      },
+      payload: { agent_id: 'agent_alpha', requesting_context: 'a2a_negotiation' }
+    });
+
+    assert.equal(response.statusCode, 200);
+    assert.equal(response.json().confidence, 'unavailable');
+    await paidApp.close();
+  });
+
+  it('rejects a request with invalid mock x402 proof', async () => {
+    const paidApp = buildApp({ ...testConfig, PAYMENTS_REQUIRED: true });
+
+    await paidApp.ready();
+    const response = await paidApp.inject({
+      method: 'POST',
+      url: '/trust-score',
+      headers: {
+        'x-payment-proof': 'invalid-proof'
+      },
+      payload: { agent_id: 'agent_alpha', requesting_context: 'a2a_negotiation' }
+    });
+
+    assert.equal(response.statusCode, 402);
+    assert.equal(response.json().code, 'invalid_proof');
     await paidApp.close();
   });
 });

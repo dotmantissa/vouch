@@ -3,7 +3,7 @@
 Vouch is a trust infrastructure ASP for the OKX.AI agent marketplace. This working slice implements:
 
 - a Fastify + TypeScript API skeleton
-- x402-shaped payment gating with a stub verifier
+- x402 payment gating with a verifier interface and mock/dev verification mode
 - a working `POST /sybil-check` endpoint backed by explainable heuristics
 - a working `POST /trust-score` endpoint with graceful degradation while marketplace reputation data is unavailable
 - a working async `POST /capability-cert` flow for `data_api` services, plus polling via `GET /capability-cert/:cert_id`
@@ -25,6 +25,29 @@ pnpm dev
 ```
 
 Server defaults to `http://localhost:3000`.
+
+## x402 Mode
+
+All paid routes share the same x402 gate and route-specific pricing:
+
+- `sybil-check`: `$0.05`
+- `trust-score`: `$0.03`
+- `capability-cert`: `$1.50`
+
+`PAYMENTS_REQUIRED=false` by default for local development. Set `PAYMENTS_REQUIRED=true` to enforce payment checks.
+
+`X402_MODE=mock` is the default implementation in this environment. It verifies a base64url JSON proof in the `x-payment-proof` header using an HMAC over the exact route payment terms. This is intentionally named mock/dev mode so the live OKX Payment SDK verifier can replace it behind the same `X402Verifier` interface without changing route handlers.
+
+When no valid proof is present, routes return HTTP `402` with:
+
+- `x402Version`
+- per-route `price`
+- accepted `asset`
+- `network`
+- `payTo`
+- `WWW-Authenticate` payment challenge header
+
+`X402_MODE=okx` currently returns `verifier_unavailable` until live OKX Payment SDK credentials/integration are wired.
 
 ## Trust Score
 
@@ -80,13 +103,9 @@ Current heuristics:
 - near-identical listing text using Jaccard similarity
 - same-block rating farming patterns
 
-## x402 Mode
-
-`PAYMENTS_REQUIRED=false` by default for local development. The current payment gate returns a 402-shaped response when enabled, but full proof verification is implemented in a later phase.
-
 ## Next build steps
 
-1. Replace x402 stub behavior with the verifier interface and dev/mock verification mode.
+1. Wire live OKX Payment SDK verification behind `X402_MODE=okx`.
 2. Wire BullMQ as an alternate capability-cert queue backend when Redis is available.
 3. Wire a real reputation data source when OKX AI marketplace history APIs are confirmed.
 4. Move trust-score cache and capability-cert persistence from in-memory adapters to Redis/Postgres.

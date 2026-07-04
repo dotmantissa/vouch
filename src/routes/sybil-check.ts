@@ -11,7 +11,7 @@ export async function registerSybilCheckRoute(app: FastifyInstance) {
   app.post(
     '/sybil-check',
     {
-      preHandler: createX402PreHandler(app.config, 'sybil-check')
+      preHandler: createX402PreHandler(app, 'sybil-check')
     },
     async (request) => {
       const body = sybilCheckRequestSchema.parse(request.body);

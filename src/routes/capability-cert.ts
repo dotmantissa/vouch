@@ -16,7 +16,7 @@ export async function registerCapabilityCertRoute(app: FastifyInstance) {
   app.post(
     '/capability-cert',
     {
-      preHandler: createX402PreHandler(app.config, 'capability-cert')
+      preHandler: createX402PreHandler(app, 'capability-cert')
     },
     async (request, reply) => {
       const body = capabilityCertRequestSchema.parse(request.body);

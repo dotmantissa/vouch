@@ -14,6 +14,8 @@ import type { CapabilityCertQueue, CapabilityCertSigner, CapabilityCertStore } f
 import { InMemoryCapabilityCertStore } from './store/in-memory-capability-cert-store.js';
 import { DevEcdsaSigner } from './signing/dev-ecdsa-signer.js';
 import { InProcessCapabilityCertQueue } from './queue/in-process-capability-cert-queue.js';
+import type { X402Verifier } from './payments/types.js';
+import { createX402Verifier } from './payments/x402-factory.js';
 
 type BuildAppOptions = {
   sybilRiskRepository?: SybilRiskRepository;
@@ -22,6 +24,7 @@ type BuildAppOptions = {
   capabilityCertStore?: CapabilityCertStore;
   capabilityCertSigner?: CapabilityCertSigner;
   capabilityCertQueue?: CapabilityCertQueue;
+  x402Verifier?: X402Verifier;
 };
 
 declare module 'fastify' {
@@ -33,6 +36,7 @@ declare module 'fastify' {
     capabilityCertStore: CapabilityCertStore;
     capabilityCertSigner: CapabilityCertSigner;
     capabilityCertQueue: CapabilityCertQueue;
+    x402Verifier: X402Verifier;
   }
 }
 
@@ -61,6 +65,7 @@ export function buildApp(config: AppConfig = loadConfig(), options: BuildAppOpti
   app.decorate('capabilityCertStore', capabilityCertStore);
   app.decorate('capabilityCertSigner', capabilityCertSigner);
   app.decorate('capabilityCertQueue', capabilityCertQueue);
+  app.decorate('x402Verifier', options.x402Verifier ?? createX402Verifier(config));
 
   app.register(registerHealthRoute);
   app.register(registerTrustScoreRoute);
