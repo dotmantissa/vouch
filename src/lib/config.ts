@@ -27,6 +27,9 @@ const configSchema = z.object({
   OKX_PAYMENT_BASE_URL: z.string().optional(),
   VOUCH_SIGNING_PRIVATE_KEY: z.string().optional(),
   REPUTATION_DATA_SOURCE_MODE: z.enum(['null']).default('null'),
+  CAPABILITY_CERT_QUEUE_MODE: z.enum(['in-process']).default('in-process'),
+  CAPABILITY_UPTIME_REQUESTS: z.coerce.number().int().positive().default(5),
+  CAPABILITY_UPTIME_INTERVAL_MS: z.coerce.number().int().nonnegative().default(6_000),
   PAYMENTS_REQUIRED: booleanFromEnv.default(false)
 });
 

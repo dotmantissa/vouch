@@ -6,14 +6,15 @@ Vouch is a trust infrastructure ASP for the OKX.AI agent marketplace. This worki
 - x402-shaped payment gating with a stub verifier
 - a working `POST /sybil-check` endpoint backed by explainable heuristics
 - a working `POST /trust-score` endpoint with graceful degradation while marketplace reputation data is unavailable
-- placeholder `capability-cert` route for the next phase
+- a working async `POST /capability-cert` flow for `data_api` services, plus polling via `GET /capability-cert/:cert_id`
 
 ## Current endpoints
 
 - `GET /health`
 - `POST /sybil-check`
 - `POST /trust-score`
-- `POST /capability-cert` returns `501` until Phase 2 lands
+- `POST /capability-cert`
+- `GET /capability-cert/:cert_id`
 
 ## Local run
 
@@ -45,6 +46,26 @@ When reputation data is unavailable, Vouch returns a structured degraded respons
 
 This avoids inventing reputation values while keeping the response shape stable for calling agents.
 
+## Capability Cert
+
+`POST /capability-cert` currently supports one probe category only:
+
+```json
+{ "target_endpoint": "https://service.example/data", "claimed_capability": "data_api" }
+```
+
+Behavior:
+
+- returns `202` immediately with `cert_id` and `poll_url`
+- runs probes asynchronously in the default `in-process` queue mode
+- probes `latency_ms`, `uptime_30s_pct`, and `schema_conformance`
+- signs the completed certificate with a dev ECDSA signer
+- stores the result in an in-memory certificate store
+- exposes the final cert via `GET /capability-cert/:cert_id`
+- sets `expires_at` to 7 days after issuance
+
+Current `data_api` schema conformance expects a JSON object containing at least one of: `data`, `result`, or `items`.
+
 ## Sybil Check
 
 `POST /sybil-check` accepts:
@@ -65,7 +86,7 @@ Current heuristics:
 
 ## Next build steps
 
-1. Implement async `capability-cert` jobs and signed cert polling.
-2. Replace x402 stub behavior with the verifier interface and dev/mock verification mode.
+1. Replace x402 stub behavior with the verifier interface and dev/mock verification mode.
+2. Wire BullMQ as an alternate capability-cert queue backend when Redis is available.
 3. Wire a real reputation data source when OKX AI marketplace history APIs are confirmed.
-4. Move trust-score cache from in-memory TTL to Redis.
+4. Move trust-score cache and capability-cert persistence from in-memory adapters to Redis/Postgres.
